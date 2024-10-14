@@ -1,5 +1,5 @@
 [basic]
-HeyChatAPPToken = "=" # need to customize
+HeyChatAPPToken = "YOUR TOKEN"
 
 WSS_URL = "wss://chat.xiaoheihe.cn/chatroom/ws/connect?"
 COMMON_PARAMS = "chat_os_type=bot&client_type=heybox_chat&chat_version=999.0.0&chat_version=1.24.5"
@@ -10,6 +10,7 @@ SEND_MSG_URL = "/chatroom/v2/channel_msg/send?"
 [helldivers2]
 DISPATCHES_URL = "https://api.helldivers2.dev/api/v1/dispatches"
 STEAM_URL = "https://api.helldivers2.dev/api/v1/steam"
+ASSIGNMENTS_URL = "https://api.helldivers2.dev/api/v1/assignment"
 
 NEW_DISPATCHES_FILE = "data/new_dispatches.json"
 HISTORY_DISPATCHES_FILE = "data/history_dispatches.json"
@@ -17,6 +18,9 @@ HISTORY_DISPATCHES_FILE = "data/history_dispatches.json"
 NEW_STEAM_DATA_FILE = "data/new_steam_data.json"
 HISTORY_STEAM_DATA_FILE = "data/history_steam_data.json"
 
+NEW_ASSIGNMENTS_FILE = "data/new_assignment.json"
+HISTORY_ASSIGNMENTS_FILE = "data/history_assignment.json"
+
 [cid]
-new_dispatches = ""
-new_steamupdate = ""
+new_dispatches = "0"
+new_steamupdate = "1"

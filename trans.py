@@ -1,8 +1,11 @@
 from translate import Translator
-
+import translators as ts
 def translate_text(text, dest_language='zh'):
     translator = Translator(to_lang=dest_language)
+    # translator = Translator(to_lang=dest_language, provider='deepl', secret_access_key='34f83f73-fbed-4d20-973e-d87240b0ba5b')
     translation = translator.translate(text)
+    # translation = ts.translate_text(text, translator='youdao', from_language='en', to_language='zh')
+    print(translation)
     return translation
 
 # 示例文本
@@ -19,6 +22,7 @@ def format_dispatch_message(message):
     message = re.sub(r'\[list\]', '\n\n', message)
     message = re.sub(r'\[/list\]', '\n\n', message)
     message = re.sub(r'\[\*\]', '\n- ', message)
+    message = translate_text(message)
     return message
 
 # 示例消息

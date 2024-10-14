@@ -27,10 +27,7 @@ def on_repsteamupdate(meta):
             room_id=meta.room_base_info.room_id,
         )
         common.SendMessage(req)
-        try:
-            hd2.fetch_and_update_steam_data()
-        except Exception as e:
-            print(e)
+
     elif len(meta.command_info.options) == 1:
         option = meta.command_info.options[0]
         if option.type == command.TYPE_STRING:
@@ -52,10 +49,7 @@ def on_repdispatch(meta):
             room_id=meta.room_base_info.room_id,
         )
         common.SendMessage(req)
-        try:
-            hd2.fetch_and_update_dispatches()
-        except Exception as e:
-            print(e)
+
         
     elif len(meta.command_info.options) == 1:
         option = meta.command_info.options[0]
