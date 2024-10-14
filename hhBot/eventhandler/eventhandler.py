@@ -4,6 +4,7 @@ from ..conf import config as conf
 
 new_dispatches_cid = conf.config['cid']['new_dispatches']
 new_steamupdate_cid = conf.config['cid']['new_steamupdate']
+new_assignments_cid = conf.config['cid']['new_assignments']
 
 def on_use_bot_command(data):
     meta = {}
@@ -17,6 +18,8 @@ def on_use_bot_command(data):
             on_repdispatch(meta)
         elif command_id == new_steamupdate_cid:
             on_repsteamupdate(meta)
+        elif command_id == new_assignments_cid:
+            on_repassignment(meta)
 
 def on_repsteamupdate(meta):
     if meta.command_info.options is None:
@@ -62,6 +65,28 @@ def on_repdispatch(meta):
             )
             common.SendMessage(req)
 
+def on_repassignment(meta):
+    if meta.command_info.options is None:
+        print("new",hd2.get_new_assignments())
+        req = model.ChannelImSendReq(
+            msg=f"{hd2.get_new_assignments()}",
+            msg_type=model.MSG_TYPE_MDTEXT,
+            channel_id=meta.channel_base_info.channel_id,
+            room_id=meta.room_base_info.room_id,
+        )
+        common.SendMessage(req)
+
+        
+    elif len(meta.command_info.options) == 1:
+        option = meta.command_info.options[0]
+        if option.type == command.TYPE_STRING:
+            req = model.ChannelImSendReq(
+                msg=option.value,
+                msg_type=model.MSG_TYPE_MDTEXT,
+                channel_id=meta.channel_base_info.channel_id,
+                room_id=meta.room_base_info.room_id,
+            )
+            common.SendMessage(req)
 
 class EventHandler:
     async def on_message(self, data):

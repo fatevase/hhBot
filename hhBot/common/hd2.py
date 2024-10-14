@@ -5,6 +5,7 @@ from ..conf import config as conf
 import requests
 from translate import Translator
 import requests
+from datetime import datetime, timezone
 
 from .common import is_english, translate_text, start_data_fetching_process
 
@@ -26,6 +27,18 @@ HISTORY_STEAM_DATA_FILE = hd2['HISTORY_STEAM_DATA_FILE']
 
 NEW_ASSIGNMENTS_FILE = hd2['NEW_ASSIGNMENTS_FILE']
 HISTORY_ASSIGNMENTS_FILE = hd2['HISTORY_ASSIGNMENTS_FILE']
+
+def get_time_difference(future_time_str):
+    future_time = datetime.strptime(future_time_str[:16], "%Y-%m-%dT%H:%M")
+    future_time = future_time.replace(tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)
+    delta = future_time - now
+
+    days = delta.days
+    hours, remainder = divmod(delta.seconds, 3600)
+    minutes, _ = divmod(remainder, 60)
+
+    return f"{days}天{hours}小时{minutes}分钟"
 
 
 def format_dispatch_message(message):
@@ -185,45 +198,50 @@ def load_json(file_path):
         return json.load(f)
     
 def format_assignment(assignment):
-
-
     def get_reward_type(reward_type_id):
-        reward_types = load_json('data/json/assignments/reward/type.json')
+        reward_types = load_json('data/json/assignments/reward/type_zh.json')
         return reward_types.get(str(reward_type_id), "Unknown")
 
     def get_task_type(task_type_id):
-        task_types = load_json('data/json/assignments/tasks/types.json')
+        task_types = load_json('data/json/assignments/tasks/task/type_zh.json')
         return task_types.get(str(task_type_id), "Unknown")
 
     def get_task_value(task_value_id):
-        task_values = load_json('data/json/assignments/tasks/values.json')
+        task_values = load_json('data/json/assignments/tasks/task/values_zh.json')
         return task_values.get(str(task_value_id), "Unknown")
 
     def get_task_value_type(task_value_type_id):
-        task_value_types = load_json('data/json/assignments/tasks/valueTypes.json')
+        task_value_types = load_json('data/json/assignments/tasks/task/valueTypes_zh.json')
+        return task_value_types.get(str(task_value_type_id), "Unknown")
+    
+    def get_plant_value_type(task_value_type_id):
+        task_value_types = load_json('data/json/planets/planets.json')
         return task_value_types.get(str(task_value_type_id), "Unknown")
 
-    time = assignment['expiresIn']
-    title = assignment['setting']['overrideTitle']
+    time = assignment['expiration']
+    title = f"[{assignment['title']}] {assignment['briefing']}"
+    progress = assignment['progress']
     reward = {
-        "type": get_reward_type(assignment['setting']['reward']['type']),
-        "id": assignment['setting']['reward']['id32'],
-        "amount": assignment['setting']['reward']['amount']
+        "type": get_reward_type(assignment['reward']['type']),
+        "amount": assignment['reward']['amount']
     }
     targets = []
-    for task in assignment['setting']['tasks']:
+    for task in assignment['tasks']:
+        task_value = [get_task_value_type(task['valueTypes'][1]), get_plant_value_type(task['values'][-1])['names']['zh-Hans']]
         target = {
             "type": get_task_type(task['type']),
-            "values": [get_task_value(value) for value in task['values']],
-            "valueTypes": [get_task_value_type(value_type) for value_type in task['valueTypes']]
+            # "values": [get_task_value(value) for value in task['values']],
+            "values": " ".join(task_value),
+            # "valueTypes": [get_task_value_type(value_type) for value_type in task['valueTypes']]
         }
         targets.append(target)
-
     return {
+        "id": assignment['id'],
         "time": time,
         "title": title,
         "reward": reward,
-        "targets": targets
+        "targets": targets,
+        "progress": progress
     }
 
 def fetch_and_update_assignments():
@@ -238,17 +256,17 @@ def fetch_and_update_assignments():
     if not assignments:
         return
 
-    latest_assignment = max(assignments, key=lambda x: x['id32'])
+    latest_assignment = max(assignments, key=lambda x: x['id'])
     formatted_assignment = format_assignment(latest_assignment)
-    
+    print(formatted_assignment)
     if Path(NEW_ASSIGNMENTS_FILE).exists():
         with open(NEW_ASSIGNMENTS_FILE, 'r') as f:
             current_assignment = json.load(f)
-            current_id = current_assignment.get('id32', 0)
+            current_id = current_assignment.get('id', 0)
     else:
         current_id = 0
 
-    if latest_assignment['id32'] >= current_id:
+    if latest_assignment['id'] >= current_id:
         with open(NEW_ASSIGNMENTS_FILE, 'w') as f:
             json.dump(formatted_assignment, f, indent=4, ensure_ascii=False)
         
@@ -260,7 +278,7 @@ def fetch_and_update_assignments():
 
         # 更新或添加到历史记录
         for i, assignment in enumerate(history_assignments):
-            if assignment['id32'] == latest_assignment['id32']:
+            if assignment['id'] == latest_assignment['id']:
                 history_assignments[i] = formatted_assignment
                 break
         else:
@@ -270,6 +288,33 @@ def fetch_and_update_assignments():
             json.dump(history_assignments, f, indent=4, ensure_ascii=False)
     return formatted_assignment
 
+def get_new_assignments():
+    # 读取最新的 assignments 数据
+    if Path(NEW_ASSIGNMENTS_FILE).exists():
+        with open(NEW_ASSIGNMENTS_FILE, 'r') as f:
+            latest_assignment = json.load(f)
+            markdown = f"# {latest_assignment['title']}\n\n"
+            markdown += f"**剩余时间**: {get_time_difference(latest_assignment['time'])}\n\n"
+            
+            # 格式化奖励
+            reward = latest_assignment['reward']
+            markdown += f"**奖励**: {reward['type']} - {reward['amount']}\n\n"
+            
+            # 格式化目标
+            markdown += "## 目标\n"
+            progress = latest_assignment['progress']
+            for i, target in enumerate(latest_assignment['targets']):
+                markdown += "- ✅ " if progress[i] else "- ❌"
+                markdown += f" **{target['type']}**: \n"
+                markdown += f" **{target['values']}**. \n"
+
+            msg = markdown
+    else:
+        msg = "暂时未获取到最新全服任务列表，请稍后。"
+    print(msg)
+    return msg
+    
+
 def start():
     events = [
         {
@@ -278,6 +323,10 @@ def start():
         },
         {
             'task': fetch_and_update_steam_data,
+            'save': True
+        },
+        {
+            'task': fetch_and_update_assignments,
             'save': True
         }
     ]

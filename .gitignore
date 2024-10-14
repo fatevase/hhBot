@@ -8,4 +8,4 @@
 /dataSources.local.xml
 __pycache__/
 /data/*.json
-replace_imports.py
+replace_pwd.py

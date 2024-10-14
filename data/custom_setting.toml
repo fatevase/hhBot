@@ -10,7 +10,7 @@ SEND_MSG_URL = "/chatroom/v2/channel_msg/send?"
 [helldivers2]
 DISPATCHES_URL = "https://api.helldivers2.dev/api/v1/dispatches"
 STEAM_URL = "https://api.helldivers2.dev/api/v1/steam"
-ASSIGNMENTS_URL = "https://api.helldivers2.dev/api/v1/assignment"
+ASSIGNMENTS_URL = "https://api.helldivers2.dev/api/v1/assignments"
 
 NEW_DISPATCHES_FILE = "data/new_dispatches.json"
 HISTORY_DISPATCHES_FILE = "data/history_dispatches.json"
@@ -18,9 +18,10 @@ HISTORY_DISPATCHES_FILE = "data/history_dispatches.json"
 NEW_STEAM_DATA_FILE = "data/new_steam_data.json"
 HISTORY_STEAM_DATA_FILE = "data/history_steam_data.json"
 
-NEW_ASSIGNMENTS_FILE = "data/new_assignment.json"
-HISTORY_ASSIGNMENTS_FILE = "data/history_assignment.json"
+NEW_ASSIGNMENTS_FILE = "data/new_assignments.json"
+HISTORY_ASSIGNMENTS_FILE = "data/history_assignments.json"
 
 [cid]
 new_dispatches = "0"
 new_steamupdate = "1"
+new_assignments = "2"
