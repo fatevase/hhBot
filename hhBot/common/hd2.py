@@ -42,20 +42,26 @@ def get_time_difference(future_time_str):
 
 
 def format_dispatch_message(message):
-    # 使用正则表达式替换<i=1>和<i=3>标签
+    # 使用正则表达式替换 <i=1> 和 <i=3> 标签
     message = re.sub(r'<i=1>(.*?)</i>', r'  <span style="color:SkyBlue">**\1**</span>  ', message)
     message = re.sub(r'<i=3>(.*?)</i>', r'  <span style="color:SkyBlue">***\1***</span>  ', message)
+    
+    # 替换 [list] 和 [/list] 标签
     message = re.sub(r'\[list\]', '\n\n', message)
     message = re.sub(r'\[/list\]', '\n\n', message)
-    message = re.sub(r'\[\*\]', '\n- ', message)
-    # message = re.sub(r'\[\*\](.*?)\[/\*\]', r'- \1', message)
+    
+    # 替换 [*] 和 [/*] 标签
+    message = re.sub(r'\[\*\]\n?', '\n- ', message)
+    message = re.sub(r'\[/\*\]', '', message)
+    
+    # 替换 [u][/u] 标签
+    message = re.sub(r'\[u\](.*?)\[/u\]', r'<span style="text-decoration:underline">\1</span>', message)
+    
     # 为特定文字添加颜色
     message = re.sub('机器人', r'<span style="color:red">机器人</span>', message)
     message = re.sub('绝地潜兵', r'<span style="color:gold">绝地潜兵</span>', message)
     message = re.sub('超级地球', r'<span style="color:CornflowerBlue">超级地球</span>', message)
-    message = message.replace('[', '<')
-    message = message.replace(']', '>')
-    # message = re.sub(r'<color=red>(.*?)</color>', r'<span style="color:red">\1</span>', message)
+    
     return message
 
 def fetch_and_update_dispatches():
@@ -258,7 +264,6 @@ def fetch_and_update_assignments():
 
     latest_assignment = max(assignments, key=lambda x: x['id'])
     formatted_assignment = format_assignment(latest_assignment)
-    print(formatted_assignment)
     if Path(NEW_ASSIGNMENTS_FILE).exists():
         with open(NEW_ASSIGNMENTS_FILE, 'r') as f:
             current_assignment = json.load(f)
@@ -311,7 +316,6 @@ def get_new_assignments():
             msg = markdown
     else:
         msg = "暂时未获取到最新全服任务列表，请稍后。"
-    print(msg)
     return msg
     
 
