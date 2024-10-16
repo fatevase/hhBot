@@ -11,6 +11,7 @@ import asyncio
 import concurrent.futures
 from ..conf import model
 
+from .logger import logger
 import functools
 
 HEYCHAT_ACK_ID = 0
@@ -97,10 +98,11 @@ def SendMessage(msg, msg_type, channel_id, room_id):
                 response.raise_for_status()  # 如果响应状态码不是 200，抛出 HTTPError
                 content = response.content.decode('utf-8')
                 HEYCHAT_ACK_ID += 1
-                print("Send Message: ",content)
+                logger.info(f"发送成功: {content}")
                 break  # 如果成功，跳出重试循环
             except requests.RequestException as e:
-                print(f"发送失败，重试 {attempt + 1}/{MAX_RETRIES} 次: {e}")
+                logger.error(f"发送失败，重试 {attempt + 1}/{MAX_RETRIES} 次: {e}")
+
                 time.sleep(2 ** attempt)  # 指数退避重试
 
 # 假设 hd2.fetch_and_update_steam_data() 返回数据
@@ -113,10 +115,13 @@ async def fetch_data_periodically(executor, events):
             kwargs = event.get('kwargs', {})
             try:
                 partial_task = functools.partial(task, *args, **kwargs)
-                data = await loop.run_in_executor(executor, partial_task)
-                print(data)
+                # 增加超时机制
+                data = await asyncio.wait_for(loop.run_in_executor(executor, partial_task), timeout=30)
+                logger.info(f"Data fetched: {data}")
+            except asyncio.TimeoutError:
+                logger.error(f"Task {task.__name__} timed out")
             except Exception as e:
-                print(e)
+                logger.error(f"Error executing task {task.__name__}: {e}")
 
             # if 'save' in event and event['save']:
             #     await loop.run_in_executor(executor, save_data_to_local, data)
@@ -124,4 +129,7 @@ async def fetch_data_periodically(executor, events):
 
 def start_data_fetching_process(events):
     executor = concurrent.futures.ProcessPoolExecutor(max_workers=1)
-    asyncio.run(fetch_data_periodically(executor, events))
+    try:
+        asyncio.run(fetch_data_periodically(executor, events))
+    except Exception as e:
+        logger.error(f"Error in data fetching process: {e}")

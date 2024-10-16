@@ -9,3 +9,8 @@
 __pycache__/
 /data/*.json
 replace_pwd.py
+
+
+# log
+*.log
+*.log.json
