@@ -7,10 +7,11 @@ from translate import Translator
 import requests
 from datetime import datetime, timezone
 
-from .common import is_english, translate_text, start_data_fetching_process
+from .common import is_english, translate_text, start_data_fetching_process, request_url
 
 import multiprocessing
 from pathlib import Path
+from .logger import logger
 
 hd2 = conf.config['helldivers2']
 
@@ -64,20 +65,24 @@ def format_dispatch_message(message):
     
     return message
 
+    
 def fetch_and_update_dispatches():
     headers = {
-        'Accept-Language': 'zh-CN'
+        'X-Super-Client': 'github.com/fatevase/hhBot',
+        'X-Super-Contact': 'uname@mail.com',
+        'Accept-Language': 'zh-CN',
+        "Connection": "close",
+        'User-Agent': 'Mozilla/5.0 Safari/537.36'
     }
 
-    response = requests.get(DISPATCHES_URL, headers=headers)
-    response.raise_for_status()
+    response = request_url(DISPATCHES_URL, headers)
+    if response is None:
+        return None
     dispatches = response.json()
-
-    if not dispatches:
-        return
 
     latest_dispatch = max(dispatches, key=lambda x: x['id'])
     latest_dispatch['message'] = format_dispatch_message(latest_dispatch['message'])
+
     if Path(NEW_DISPATCHES_FILE).exists():
         with open(NEW_DISPATCHES_FILE, 'r') as f:
             current_dispatch = json.load(f)
@@ -105,6 +110,7 @@ def fetch_and_update_dispatches():
 
         with open(HISTORY_DISPATCHES_FILE, 'w') as f:
             json.dump(history_dispatches, f, indent=4, ensure_ascii=False)
+
     return latest_dispatch
 
 def get_new_dispatches():
@@ -141,16 +147,19 @@ def preserve_tags_and_translate(original_text, dest_language='zh'):
 
 
 def fetch_and_update_steam_data():
+
     headers = {
-        'Accept-Language': 'zh-CN'
+        'X-Super-Client': 'github.com/fatevase/hhBot',
+        'X-Super-Contact': 'uname@mail.com',
+        'Accept-Language': 'zh-CN',
+        "Connection": "close",
+        'User-Agent': 'Mozilla/5.0 Safari/537.36'
     }
 
-    response = requests.get(STEAM_URL, headers=headers)
-    response.raise_for_status()
-    steam_data = response.json()
-
-    if not steam_data:
+    response = request_url(STEAM_URL, headers)
+    if response is None:
         return None
+    steam_data = response.json()
 
     # 按照最新日期获取最新的 Steam 数据
     #latest_steam_data = max(steam_data, key=lambda x: datetime.strptime(x['date'], "%Y-%m-%dT%H:%M:%SZ"))
@@ -193,7 +202,7 @@ def get_new_steam_data():
         with open(NEW_STEAM_DATA_FILE, 'r', encoding='utf-8') as f:
             latest_steam_data = json.load(f)
             content = latest_steam_data.get('content', "暂时未获取到最新Steam数据，请稍后。")
-            content += f"| {latest_steam_data.get('publishedAt', "")}"
+            content += f"| {latest_steam_data.get('publishedAt', '')}"
             return content
     return "暂时未获取到最新Steam数据，请稍后。"
 
@@ -251,17 +260,20 @@ def format_assignment(assignment):
     }
 
 def fetch_and_update_assignments():
+
     headers = {
-        'Accept-Language': 'zh-CN'
+        'X-Super-Client': 'github.com/fatevase/hhBot',
+        'X-Super-Contact': 'uname@mail.com',
+        'Accept-Language': 'zh-CN',
+        "Connection": "close",
+        'User-Agent': 'Mozilla/5.0 Safari/537.36'
     }
 
-    response = requests.get(ASSIGNMENTS_URL, headers=headers)
-    response.raise_for_status()
+    response = request_url(ASSIGNMENTS_URL, headers)
+    if response is None:
+        return None
     assignments = response.json()
-
-    if not assignments:
-        return
-
+    
     latest_assignment = max(assignments, key=lambda x: x['id'])
     formatted_assignment = format_assignment(latest_assignment)
     if Path(NEW_ASSIGNMENTS_FILE).exists():
