@@ -24,15 +24,16 @@ def on_use_bot_command(data):
     if not isinstance(data, dict):
         print(f"got error for data:{data}")
         return
+    print("origin command data:", data, "/n/n/n")
     meta = model.UseCommandData(**data)
     if meta and meta.command_info:
         command_id = meta.command_info.id
         if command_id == new_dispatches_cid:
-            handle_command(meta, hd2.get_new_dispatches, model.MSG_TYPE_MDTEXT)
+            handle_command(meta, hd2.get_new_dispatches, model.MSG_TYPE_CARD)
         elif command_id == new_steamupdate_cid:
             handle_command(meta, hd2.get_new_steam_data, model.MSG_TYPE_MDTEXT)
         elif command_id == new_assignments_cid:
-            handle_command(meta, hd2.get_new_assignments, model.MSG_TYPE_MDTEXT)
+            handle_command(meta, hd2.get_new_assignments, model.MSG_TYPE_CARD)
 
 class EventHandler:
     async def on_message(self, data):

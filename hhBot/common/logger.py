@@ -67,4 +67,4 @@ class Logger(metaclass=LoggerMeta):
     def warning(self, message):
         self.log(message, logging.WARNING)
 
-logger = Logger(log_file="heychat_bot.log")
+logger = Logger(log_file="logs/heychat_bot.log")

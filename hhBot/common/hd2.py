@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 
 from .common import is_english, translate_text, start_data_fetching_process, request_url
 
+import time
 import multiprocessing
 from pathlib import Path
 from .logger import logger
@@ -113,6 +114,30 @@ def fetch_and_update_dispatches():
 
     return latest_dispatch
 
+def make_card_msg(title,msg):
+    data = {"type": "card","modules": [
+            {
+            "type": "header",
+            "content": {
+                "type": "plain-text",
+                "text": "标题"
+            }},
+            {
+            "type": "divider"
+            },{
+            "type": "section",
+            "paragraph": [
+                {
+                "type": "markdown",
+                "text": "**黑盒语音**"
+                }
+            ]}
+        ]}
+    data['modules'][0]["content"]['text'] = title
+    data['modules'][2]["paragraph"][0]['text'] = msg
+
+    return json.dumps({"data":[data]})
+
 def get_new_dispatches():
     # 读取最新的 dispatch 数据
     if Path(NEW_DISPATCHES_FILE).exists():
@@ -123,8 +148,8 @@ def get_new_dispatches():
             msg = time + ' | ' + msg
     else:
         msg = "暂时未获取到最新指令，请稍后。"
-    print(msg)
-    return msg
+    print("dispatches:", make_card_msg("超级地球最新指令", msg))
+    return make_card_msg("超级地球最新指令", msg)
 
 
 def preserve_tags_and_translate(original_text, dest_language='zh'):
@@ -211,35 +236,42 @@ def get_new_steam_data():
 def load_json(file_path):
     with open(file_path, 'r') as f:
         return json.load(f)
+
+def get_reward_type(reward_type_id):
+    reward_types = load_json('data/json/assignments/reward/type_zh.json')
+    return reward_types.get(str(reward_type_id), "Unknown")
+
+def get_task_type(task_type_id):
+    task_types = load_json('data/json/assignments/tasks/task/type_zh.json')
+    return task_types.get(str(task_type_id), "Unknown")
+
+def get_task_value(task_value_id):
+    task_values = load_json('data/json/assignments/tasks/task/values_zh.json')
+    return task_values.get(str(task_value_id), "Unknown")
+
+def get_task_value_type(task_value_type_id):
+    task_value_types = load_json('data/json/assignments/tasks/task/valueTypes_zh.json')
+    return task_value_types.get(str(task_value_type_id), "Unknown")
+
+def get_plant_value_type(task_value_type_id):
+    task_value_types = load_json('data/json/planets/planets.json')
+    return task_value_types.get(str(task_value_type_id), "Unknown")
     
 def format_assignment(assignment):
-    def get_reward_type(reward_type_id):
-        reward_types = load_json('data/json/assignments/reward/type_zh.json')
-        return reward_types.get(str(reward_type_id), "Unknown")
-
-    def get_task_type(task_type_id):
-        task_types = load_json('data/json/assignments/tasks/task/type_zh.json')
-        return task_types.get(str(task_type_id), "Unknown")
-
-    def get_task_value(task_value_id):
-        task_values = load_json('data/json/assignments/tasks/task/values_zh.json')
-        return task_values.get(str(task_value_id), "Unknown")
-
-    def get_task_value_type(task_value_type_id):
-        task_value_types = load_json('data/json/assignments/tasks/task/valueTypes_zh.json')
-        return task_value_types.get(str(task_value_type_id), "Unknown")
-    
-    def get_plant_value_type(task_value_type_id):
-        task_value_types = load_json('data/json/planets/planets.json')
-        return task_value_types.get(str(task_value_type_id), "Unknown")
 
     time = assignment['expiration']
     title = f"[{assignment['title']}] {assignment['briefing']}"
     progress = assignment['progress']
-    reward = {
-        "type": get_reward_type(assignment['reward']['type']),
-        "amount": assignment['reward']['amount']
-    }
+    if assignment['reward'] is not None:
+        reward = {
+            "type": get_reward_type(assignment['reward']['type']),
+            "amount": assignment['reward']['amount']
+        }
+    else:
+        reward = {
+            "type": None,
+            "amount": 0
+        }
     targets = []
     for task in assignment['tasks']:
         task_value = [get_task_value_type(task['valueTypes'][1]), get_plant_value_type(task['values'][-1])['names']['zh-Hans']]
@@ -274,75 +306,88 @@ def fetch_and_update_assignments():
         return None
     assignments = response.json()
     
-    latest_assignment = max(assignments, key=lambda x: x['id'])
+    if len(assignments) == 0:
+        latest_assignment = dict(id=0, expiration=time.strftime("%H:%M:%S %Y")
+                                 , title="战况", briefing='等待新的指令。', progress=1, reward=None, tasks=[])
+    else:
+        latest_assignment = max(assignments, key=lambda x: x['id'])
+    # print(latest_assignment)
     formatted_assignment = format_assignment(latest_assignment)
+    # print(formatted_assignment)
     if Path(NEW_ASSIGNMENTS_FILE).exists():
         with open(NEW_ASSIGNMENTS_FILE, 'r') as f:
             current_assignment = json.load(f)
             current_id = current_assignment.get('id', 0)
     else:
-        current_id = 0
+        current_id = -1
 
-    if latest_assignment['id'] >= current_id:
-        with open(NEW_ASSIGNMENTS_FILE, 'w') as f:
-            json.dump(formatted_assignment, f, indent=4, ensure_ascii=False)
-        
-        if Path(HISTORY_ASSIGNMENTS_FILE).exists():
-            with open(HISTORY_ASSIGNMENTS_FILE, 'r') as f:
-                history_assignments = json.load(f)
-        else:
-            history_assignments = []
+    if latest_assignment['id'] < current_id and latest_assignment['id'] != 0:
+        return formatted_assignment
 
-        # 更新或添加到历史记录
-        for i, assignment in enumerate(history_assignments):
-            if assignment['id'] == latest_assignment['id']:
-                history_assignments[i] = formatted_assignment
-                break
-        else:
-            history_assignments.append(formatted_assignment)
+    with open(NEW_ASSIGNMENTS_FILE, 'w') as f:
+        json.dump(formatted_assignment, f, indent=4, ensure_ascii=False)
+    
+    if Path(HISTORY_ASSIGNMENTS_FILE).exists():
+        with open(HISTORY_ASSIGNMENTS_FILE, 'r') as f:
+            history_assignments = json.load(f)
+    else:
+        history_assignments = []
 
-        with open(HISTORY_ASSIGNMENTS_FILE, 'w') as f:
-            json.dump(history_assignments, f, indent=4, ensure_ascii=False)
+    # 更新或添加到历史记录
+    for i, assignment in enumerate(history_assignments):
+        if assignment['id'] == latest_assignment['id']:
+            history_assignments[i] = formatted_assignment
+            break
+    else:
+        history_assignments.append(formatted_assignment)
+
+    with open(HISTORY_ASSIGNMENTS_FILE, 'w') as f:
+        json.dump(history_assignments, f, indent=4, ensure_ascii=False)
     return formatted_assignment
 
 def get_new_assignments():
     # 读取最新的 assignments 数据
-    if Path(NEW_ASSIGNMENTS_FILE).exists():
-        with open(NEW_ASSIGNMENTS_FILE, 'r') as f:
-            latest_assignment = json.load(f)
-            markdown = f"# {latest_assignment['title']}\n\n"
-            markdown += f"**剩余时间**: {get_time_difference(latest_assignment['time'])}\n\n"
-            
-            # 格式化奖励
-            reward = latest_assignment['reward']
-            markdown += f"**奖励**: {reward['type']} - {reward['amount']}\n\n"
-            
-            # 格式化目标
-            markdown += "## 目标\n"
-            progress = latest_assignment['progress']
-            for i, target in enumerate(latest_assignment['targets']):
-                markdown += "- ✅ " if progress[i] else "- ❌"
-                markdown += f" **{target['type']}**: \n"
-                markdown += f" **{target['values']}**. \n"
-
-            msg = markdown
-    else:
+    if not Path(NEW_ASSIGNMENTS_FILE).exists():
         msg = "暂时未获取到最新全服任务列表，请稍后。"
-    return msg
+        return make_card_msg("超级地球", msg)
+    with open(NEW_ASSIGNMENTS_FILE, 'r') as f:
+        latest_assignment = json.load(f)
+        if latest_assignment['id'] == 0:
+            # markdown = f"# {latest_assignment['title']}\n\n"
+            markdown = f"**当前时间**: {latest_assignment['time']}\n\n"
+            return make_card_msg(latest_assignment['title'], markdown)
+        # markdown = f"# {latest_assignment['title']}\n\n"
+        markdown = f"**剩余时间**: {get_time_difference(latest_assignment['time'])}\n\n"
+        
+        # 格式化奖励
+        reward = latest_assignment['reward']
+        markdown += f"**奖励**: {reward['type']} - {reward['amount']}\n\n"
+        
+        # 格式化目标
+        markdown += "## 目标\n"
+        progress = latest_assignment['progress']
+        for i, target in enumerate(latest_assignment['targets']):
+            markdown += "- ✅ " if progress[i] else "- ❌"
+            markdown += f" **{target['type']}**: \n"
+            markdown += f" **{target['values']}**. \n"
+
+        msg = markdown
+    # print("assignments:", make_card_msg(latest_assignment['title'], msg))
+    return make_card_msg(latest_assignment['title'], msg)
     
 
 def start():
     events = [
+        {
+            'task': fetch_and_update_assignments,
+            'save': True
+        },
         {
             'task': fetch_and_update_dispatches,
             'save': True
         },
         {
             'task': fetch_and_update_steam_data,
-            'save': True
-        },
-        {
-            'task': fetch_and_update_assignments,
             'save': True
         }
     ]

@@ -18,14 +18,10 @@ class AvatarDecoration(BaseModel):
 
 class SenderInfo(BaseModel):
     avatar: str
-    avatar_decoration: AvatarDecoration
-    bot: bool
     level: int
-    medals: Any
     nickname: str
     roles: Optional[List['str']]
     room_nickname: str
-    tag: Any
     user_id: int
 
 
@@ -39,6 +35,7 @@ class UseCommandData(BaseModel):
     bot_id: int
     channel_base_info: ChannelBaseInfo
     command_info: CommandInfo
+    msg: str
     msg_id: str
     room_base_info: RoomBaseInfo
     send_time: int
@@ -47,6 +44,8 @@ class UseCommandData(BaseModel):
 
 MSG_TYPE_MDTEXT = 4
 MSG_TYPE_USECOMMAND = "50"
+
+MSG_TYPE_CARD = 20
 
 
 class ChannelImSendReq(BaseModel):
